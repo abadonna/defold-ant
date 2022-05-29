@@ -6,15 +6,15 @@
 
 #define ENABLE_EXTENDED_MESSAGES
 
-#define USER_BAUDRATE         (50000)  // For AT3/AP2, use 57600
-#define USER_RADIOFREQ        (35)
+#define USER_BAUDRATE         (57600)  // For AT3/AP2, use 57600
+#define USER_RADIOFREQ        (57)//(35)
 
 #define USER_ANTCHANNEL       (0)
-#define USER_DEVICENUM        (49)
-#define USER_DEVICETYPE       (1)
-#define USER_TRANSTYPE        (1)
+#define USER_DEVICENUM        (0)
+#define USER_DEVICETYPE       (0)
+#define USER_TRANSTYPE        (0)
 
-#define USER_NETWORK_KEY      {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,}
+#define USER_NETWORK_KEY      {0xB9, 0xA5, 0x21, 0xFB, 0xBD, 0x72, 0xC3, 0x45} //ant plus network key
 #define USER_NETWORK_NUM      (0)      // The network key is assigned to this network number
 
 #define MESSAGE_TIMEOUT       (1000)
@@ -290,7 +290,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                   break;
                }
                this->LogMessage("Channel assigned\n");
-               this->LogMessage("Setting Channel ID...\n");
+            this->LogMessage("Setting Channel ID... Ch:%d Device:%d Devtype:%d Transtype:%d \n", USER_ANTCHANNEL, USER_DEVICENUM, USER_DEVICETYPE, USER_TRANSTYPE);
                bStatus = pclMessageObject->SetChannelID(USER_ANTCHANNEL, USER_DEVICENUM, USER_DEVICETYPE, USER_TRANSTYPE, MESSAGE_TIMEOUT);
                break;
             }
@@ -302,7 +302,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                   this->LogMessage("Error configuring Channel ID: Code 0%d\n", stMessage.aucData[2]);
                   break;
                }
-               this->LogMessage("Channel ID set\n");
+               this->LogMessage("Channel ID set \n");
                this->LogMessage("Setting Radio Frequency...\n");
                bStatus = pclMessageObject->SetChannelRFFrequency(USER_ANTCHANNEL, USER_RADIOFREQ, MESSAGE_TIMEOUT);
                break;
@@ -316,10 +316,26 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                   break;
                }
                this->LogMessage("Radio Frequency set\n");
-               this->LogMessage("Opening channel...\n");
-               bBroadcasting = TRUE;
-               bStatus = pclMessageObject->OpenChannel(USER_ANTCHANNEL, MESSAGE_TIMEOUT);
+
+
+               this->LogMessage("Setting Message Period...\n");
+               bStatus = pclMessageObject->SetChannelPeriod(USER_ANTCHANNEL, (USHORT)8070, MESSAGE_TIMEOUT);
+               
                break;
+            }
+
+            case MESG_CHANNEL_MESG_PERIOD_ID:
+            {
+                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
+                {
+                    printf("Error assigning Message Period: Code 0%d\n", stMessage.aucData[2]);
+                    break;
+                }
+                this->LogMessage("Message period assigned\n");
+                this->LogMessage("Opening channel...\n");
+                bBroadcasting = TRUE;
+                bStatus = pclMessageObject->OpenChannel(USER_ANTCHANNEL, MESSAGE_TIMEOUT);
+                break;
             }
 
             case MESG_OPEN_CHANNEL_ID:
