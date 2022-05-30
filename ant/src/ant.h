@@ -14,7 +14,7 @@ class ANTController {
 public:
    ANTController(MESSAGE_CALLBACK callback);
    virtual ~ANTController();
-   BOOL Init(UCHAR ucDeviceNumber_, UCHAR ucChannelType_);
+BOOL Init(UCHAR usbNumber, UCHAR channelType, USHORT deviceType, USHORT transType, USHORT radioFreq, USHORT perio);
    void Close();
 
 private:
@@ -34,6 +34,10 @@ private:
    BOOL bMyDone;
    BOOL bDone;
    UCHAR ucChannelType;
+   USHORT usDeviceType;
+   USHORT usTransType;
+   USHORT usRadioFreq;
+   USHORT usPeriod;
    DSISerialGeneric* pclSerialObject;
    DSIFramerANT* pclMessageObject;
    DSI_THREAD_ID uiDSIThread;

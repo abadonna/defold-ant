@@ -119,27 +119,55 @@ static int Test(lua_State* L)  {
     return 0;
 }
 
-static int Init(lua_State* L)
+static bool Init(UCHAR usbNumber, UCHAR channelType = 0, USHORT deviceType = 0, USHORT transType = 0, USHORT radioFreq  = 66, USHORT period = 8192)
+{
+    controller = new ANTController(SendMessageToListeners);
+    if(controller->Init(usbNumber, channelType, deviceType, transType, radioFreq, period))
+    {
+        return true;
+    }
+
+    delete controller;
+    controller =  NULL;
+    return false;
+}
+
+static int InitGeneric(lua_State* L)
 {
     UCHAR ucDeviceNumber = (UCHAR)lua_tonumber(L, 1);
     UCHAR ucChannelType = (UCHAR)lua_tonumber(L, 2);
 
     lua_settop(L, 0);
-    
-    controller = new ANTController(SendMessageToListeners);
-    if(controller->Init(ucDeviceNumber, ucChannelType))
+
+    if (Init(ucDeviceNumber, ucChannelType))
     {
         lua_pushboolean(L, true);
     }
     else
     {
-        delete controller;
-        controller =  NULL;
         lua_pushboolean(L, false);
     }
     
     return 1;
 
+}
+
+static int InitHR(lua_State* L)
+{
+    UCHAR ucDeviceNumber = (UCHAR)lua_tonumber(L, 1);
+   
+    lua_settop(L, 0);
+
+    if (Init(ucDeviceNumber, 1 /*slave*/, 120 /*device  type - hr monitor*/, 0 /*transtype*/, 57 /*freq*/, 8070 /*period*/))
+    {
+        lua_pushboolean(L, true);
+    }
+    else
+    {
+        lua_pushboolean(L, false);
+    }
+
+    return 1;
 }
 
 static int Close(lua_State* L)
@@ -179,7 +207,8 @@ static int AddListener(lua_State* L)
 // Functions exposed to Lua
 static const luaL_reg Module_methods[] =
 {
-    {"init", Init},
+    {"init_generic", InitGeneric},
+    {"init_hr", InitHR},
     {"close", Close},
     {"add_listener", AddListener},
     {"test", Test},

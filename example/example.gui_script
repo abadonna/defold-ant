@@ -6,7 +6,7 @@ end
 function init(self)
 	self.log = ""
 	ant.add_listener(get_message)
-	ant.init(0, 1)
+	ant.init_hr(0)
 end
 
 function final(self)
