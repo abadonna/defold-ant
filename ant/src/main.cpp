@@ -92,19 +92,31 @@ static void UnregisterCallback(lua_State* L, Listener* cbk)
     }
 }
 
-static void SendMessageToListeners(const char* message) {
-    for(int i = listeners.Size() - 1; i >= 0; --i)
-    {
-        if (i > listeners.Size()){
+static void SendMessageToListeners(const char* message, std::unordered_map<char*, float> *data) {
+    for(int i = listeners.Size() - 1; i >= 0; --i) {
+        if (i > listeners.Size()) {
             return;
         }
         Listener* cbk = &listeners[i];
         lua_State* L = cbk->L;
         int top = lua_gettop(L);
         if (CheckCallback(cbk)) {
-            lua_pushstring(L, message); //message_id
-            //lua_pushlstring(L, message, 1);
+            lua_newtable(L);
+            int t = lua_gettop(L);
+            lua_pushstring(L, "text"); 
+            lua_pushstring(L, message); 
+            lua_settable(L, t);
+            
+            if (data) {
+                for (auto it = data->begin(); it != data->end(); ++it) {
+                    lua_pushstring(L, it->first);
+                    lua_pushnumber(L, it->second);
+                    lua_settable(L, t);
+                }
+                
+            } 
             int ret = lua_pcall(L, 2, 0, 0);
+            
             if(ret != 0) {
                 dmLogError("Error running callback: %s", lua_tostring(L, -1));
                 lua_pop(L, 1);
@@ -115,14 +127,14 @@ static void SendMessageToListeners(const char* message) {
 }
 
 static int Test(lua_State* L)  {
-    SendMessageToListeners("XXXX");
+    SendMessageToListeners("XXXX", NULL);
     return 0;
 }
 
-static bool Init(UCHAR usbNumber, UCHAR channelType = 0, USHORT deviceType = 0, USHORT transType = 0, USHORT radioFreq  = 66, USHORT period = 8192)
+static bool Init(UCHAR usbNumber, UCHAR channelType = 0, USHORT deviceType = 0, USHORT transType = 0, USHORT radioFreq  = 66, USHORT period = 8192, DATA_PROCESS_CALLBACK callback = NULL)
 {
     controller = new ANTController(SendMessageToListeners);
-    if(controller->Init(usbNumber, channelType, deviceType, transType, radioFreq, period))
+    if(controller->Init(usbNumber, channelType, deviceType, transType, radioFreq, period, callback))
     {
         return true;
     }
@@ -158,7 +170,7 @@ static int InitHR(lua_State* L)
    
     lua_settop(L, 0);
 
-    if (Init(ucDeviceNumber, 1 /*slave*/, 120 /*device  type - hr monitor*/, 0 /*transtype*/, 57 /*freq*/, 8070 /*period*/))
+    if (Init(ucDeviceNumber, 1 /*slave*/, 120 /*device  type - hr monitor*/, 0 /*transtype*/, 57 /*freq*/, 8070 /*period*/, ProcessHeartRateData))
     {
         lua_pushboolean(L, true);
     }
@@ -207,7 +219,7 @@ static int AddListener(lua_State* L)
 // Functions exposed to Lua
 static const luaL_reg Module_methods[] =
 {
-    {"init_generic", InitGeneric},
+    {"init", InitGeneric},
     {"init_hr", InitHR},
     {"close", Close},
     {"add_listener", AddListener},

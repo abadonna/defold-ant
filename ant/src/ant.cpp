@@ -17,25 +17,10 @@
 
 #define MESSAGE_TIMEOUT       (1000)
 
-// Indexes into message recieved from ANT
-#define MESSAGE_BUFFER_DATA1_INDEX ((UCHAR) 0)
-#define MESSAGE_BUFFER_DATA2_INDEX ((UCHAR) 1)
-#define MESSAGE_BUFFER_DATA3_INDEX ((UCHAR) 2)
-#define MESSAGE_BUFFER_DATA4_INDEX ((UCHAR) 3)
-#define MESSAGE_BUFFER_DATA5_INDEX ((UCHAR) 4)
-#define MESSAGE_BUFFER_DATA6_INDEX ((UCHAR) 5)
-#define MESSAGE_BUFFER_DATA7_INDEX ((UCHAR) 6)
-#define MESSAGE_BUFFER_DATA8_INDEX ((UCHAR) 7)
-#define MESSAGE_BUFFER_DATA9_INDEX ((UCHAR) 8)
-#define MESSAGE_BUFFER_DATA10_INDEX ((UCHAR) 9)
-#define MESSAGE_BUFFER_DATA11_INDEX ((UCHAR) 10)
-#define MESSAGE_BUFFER_DATA12_INDEX ((UCHAR) 11)
-#define MESSAGE_BUFFER_DATA13_INDEX ((UCHAR) 12)
-#define MESSAGE_BUFFER_DATA14_INDEX ((UCHAR) 13)
-
 ANTController::ANTController(MESSAGE_CALLBACK callback)
 {
-    fMessageCallback = callback;
+    funcMessageCallback = callback;
+    funcDataProcessCallback = NULL;
     ucChannelType = CHANNEL_TYPE_INVALID;
     pclSerialObject = (DSISerialGeneric*)NULL;
     pclMessageObject = (DSIFramerANT*)NULL;
@@ -67,7 +52,7 @@ ANTController::~ANTController()
 //                  If not specified, 2 is passed in as invalid.
 //
 ////////////////////////////////////////////////////////////////////////////////
-BOOL ANTController::Init(UCHAR usbNumber, UCHAR channelType, USHORT deviceType, USHORT transType, USHORT radioFreq, USHORT period)
+BOOL ANTController::Init(UCHAR usbNumber, UCHAR channelType, USHORT deviceType, USHORT transType, USHORT radioFreq, USHORT period, DATA_PROCESS_CALLBACK callback)
 {
     BOOL bStatus;
 
@@ -75,6 +60,7 @@ BOOL ANTController::Init(UCHAR usbNumber, UCHAR channelType, USHORT deviceType, 
     usTransType = transType;
     usRadioFreq = radioFreq;
     usPeriod = period;
+    funcDataProcessCallback = callback;
 
     // Initialize condition var and mutex
     UCHAR ucCondInit = DSIThread_CondInit(&condTestDone);
@@ -160,7 +146,7 @@ void ANTController::LogMessage(const char *format, ...)
     va_end(args);
 
     printf("%s", message);
-    fMessageCallback(message);
+    funcMessageCallback(message, NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -717,7 +703,14 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
       }
    }
 
-   // If we recieved a data message, diplay its contents here.
+// If we recieved a data message, diplay its contents here.
+    if (funcDataProcessCallback) {  
+        std::unordered_map<char*, float> data;
+        data["device_type"] = (float)usDeviceType;
+        funcDataProcessCallback(stMessage, &data);
+        funcMessageCallback("", &data);
+    }
+
    if(bPrintBuffer)
    {
       if(bDisplay)
