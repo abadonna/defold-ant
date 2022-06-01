@@ -5,135 +5,115 @@
 #include <dmsdk/sdk.h>
 #include "ant.h"
 
-ANTController* controller;
+#include <mutex>
 
-struct Listener {
-    Listener() : L(0), callback(LUA_NOREF), self(LUA_NOREF) {}
-    lua_State* L;
-    int callback;
-    int self;
+struct CallbackData
+{
+    const char* message;
+    std::unordered_map<char*, float> *data;
 };
 
-static void UnregisterCallback(lua_State* L, Listener* cbk);
-static int GetEqualIndexOfListener(lua_State* L, Listener* cbk);
+static dmMutex::HMutex mutex;
+static dmArray<CallbackData> callbacksQueue;
 
-dmArray<Listener> listeners;
+ANTController* controller;
+dmScript::LuaCallbackInfo* callback;
 
-static bool CheckCallback(Listener* cbk)
-{
-    if(cbk->callback == LUA_NOREF)
-    {
-        dmLogInfo("Callback do not exist.");
-        return false;
+static void InvokeMessageCallback(const char* message, std::unordered_map<char*, float> *data) {
+
+    if (callback == NULL) {
+        return;
     }
-    lua_State* L = cbk->L;
+
+    if (!dmScript::IsCallbackValid(callback))
+    {
+        dmLogError("Callback is invalid.");
+        return;
+    }
+
+    lua_State* L = dmScript::GetCallbackLuaContext(callback);
     int top = lua_gettop(L);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->callback);
-    //[-1] - callback
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->self);
-    //[-1] - self
-    //[-2] - callback
-    lua_pushvalue(L, -1);
-    //[-1] - self
-    //[-2] - self
-    //[-3] - callback
-    dmScript::SetInstance(L);
-    //[-1] - self
-    //[-2] - callback
-    if (!dmScript::IsInstanceValid(L)) {
-        UnregisterCallback(L, cbk);
-        dmLogError("Could not run callback because the instance has been deleted.");
-        lua_pop(L, 2);
-        assert(top == lua_gettop(L));
-        return false;
-    }
-    return true;
-}
 
-static int GetEqualIndexOfListener(lua_State* L, Listener* cbk)
-{
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->callback);
-    int first = lua_gettop(L);
-    int second = first + 1;
-    for(uint32_t i = 0; i != listeners.Size(); ++i)
-    {
-        Listener* cb = &listeners[i];
-        lua_rawgeti(L, LUA_REGISTRYINDEX, cb->callback);
-        if (lua_equal(L, first, second)){
-            lua_pop(L, 1);
-            lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->self);
-            lua_rawgeti(L, LUA_REGISTRYINDEX, cb->self);
-            if (lua_equal(L, second, second + 1)){
-                lua_pop(L, 3);
-                return i;
-            }
-            lua_pop(L, 2);
-        } else {
-            lua_pop(L, 1);
-        }
+    if (!dmScript::SetupCallback(callback)) {
+        return;
     }
-    lua_pop(L, 1);
-    return -1;
-}
 
-static void UnregisterCallback(lua_State* L, Listener* cbk)
-{
-    int index = GetEqualIndexOfListener(L, cbk);
-    if (index >= 0){
-        if(cbk->callback != LUA_NOREF)
-        {
-            dmScript::Unref(cbk->L, LUA_REGISTRYINDEX, cbk->callback);
-            dmScript::Unref(cbk->L, LUA_REGISTRYINDEX, cbk->self);
-            cbk->callback = LUA_NOREF;
-        }
-        listeners.EraseSwap(index);
-    } else {
-        dmLogError("Can't remove a callback that didn't not register.");
-    }
-}
+    lua_newtable(L);
+    int t = lua_gettop(L);
+    lua_pushstring(L, "text"); 
+    lua_pushstring(L, message); 
+    lua_settable(L, t);
 
-static void SendMessageToListeners(const char* message, std::unordered_map<char*, float> *data) {
-    for(int i = listeners.Size() - 1; i >= 0; --i) {
-        if (i > listeners.Size()) {
-            return;
-        }
-        Listener* cbk = &listeners[i];
-        lua_State* L = cbk->L;
-        int top = lua_gettop(L);
-        if (CheckCallback(cbk)) {
-            lua_newtable(L);
-            int t = lua_gettop(L);
-            lua_pushstring(L, "text"); 
-            lua_pushstring(L, message); 
+    if (data) {
+        for (auto it = data->begin(); it != data->end(); ++it) {
+            lua_pushstring(L, it->first);
+            lua_pushnumber(L, it->second);
             lua_settable(L, t);
-            
-            if (data) {
-                for (auto it = data->begin(); it != data->end(); ++it) {
-                    lua_pushstring(L, it->first);
-                    lua_pushnumber(L, it->second);
-                    lua_settable(L, t);
-                }
-                
-            } 
-            int ret = lua_pcall(L, 2, 0, 0);
-            
-            if(ret != 0) {
-                dmLogError("Error running callback: %s", lua_tostring(L, -1));
-                lua_pop(L, 1);
-            }
         }
-        assert(top == lua_gettop(L));
+
     }
+
+    dmScript::PCall(L, 2, 0); // self + # user arguments
+    dmScript::TeardownCallback(callback);
+    assert(top == lua_gettop(L));
+}
+
+void AddToQueueCallback(const char* message, std::unordered_map<char*, float> *data) {
+    CallbackData cb;
+    cb.message = strdup(message);
+    cb.data = NULL;
+    
+    if (data) {
+        cb.data = new std::unordered_map<char*, float>();
+        for (auto it = data->begin(); it != data->end(); ++it) {
+            (*cb.data)[it->first] = it->second;
+        }
+    }
+
+    DM_MUTEX_SCOPED_LOCK(mutex);
+    if(callbacksQueue.Full())
+    {
+        callbacksQueue.OffsetCapacity(2);
+    }
+    callbacksQueue.Push(cb); 
+}
+
+void UpdateCallback()
+{
+    if (callbacksQueue.Empty()) {
+        return;
+    }
+
+    dmArray<CallbackData> tmp;
+    {
+        DM_MUTEX_SCOPED_LOCK(mutex);
+        tmp.Swap(callbacksQueue);
+    }
+
+    for(uint32_t i = 0; i != tmp.Size(); ++i)
+    {
+        CallbackData* cb = &tmp[i];
+        InvokeMessageCallback(cb->message, cb->data);
+        if (cb->data) {
+            delete cb->data;
+        }
+    }
+
 }
 
 static int Test(lua_State* L)  {
-    SendMessageToListeners("XXXX", NULL);
+    mutex = dmMutex::New();
+    std::unordered_map<char*, float> data;
+    data["device_type"] = 1;
+    AddToQueueCallback("XXXX", &data);
+    AddToQueueCallback("yyy", NULL);
     return 0;
 }
 
 static bool Init(UCHAR usbNumber, UCHAR channelType = 0, USHORT deviceType = 0, USHORT transType = 0, USHORT radioFreq  = 66, USHORT period = 8192, DATA_PROCESS_CALLBACK callback = NULL)
 {
-    controller = new ANTController(SendMessageToListeners);
+    mutex = dmMutex::New();
+    controller = new ANTController(AddToQueueCallback);
     if(controller->Init(usbNumber, channelType, deviceType, transType, radioFreq, period, callback))
     {
         return true;
@@ -189,30 +169,21 @@ static int Close(lua_State* L)
         delete controller;
     }
 
+    if (callback) {
+        dmScript::DestroyCallback(callback); 
+    }
+
     return 0;
 
 }
 
-static int AddListener(lua_State* L)
+static int SetCallback(lua_State* L)
 {
-    Listener cbk;
-    cbk.L = dmScript::GetMainThread(L);
-
-    luaL_checktype(L, 1, LUA_TFUNCTION);
-    lua_pushvalue(L, 1);
-    cbk.callback = dmScript::Ref(L, LUA_REGISTRYINDEX);
-
-    dmScript::GetInstance(L);
-    cbk.self = dmScript::Ref(L, LUA_REGISTRYINDEX);
-
-    if(cbk.callback != LUA_NOREF)
-    {
-        if(listeners.Full())
-        {
-            listeners.OffsetCapacity(1);
-        }
-        listeners.Push(cbk);
+    DM_LUA_STACK_CHECK(L, 0);
+    if (callback) {
+        dmScript::DestroyCallback(callback); 
     }
+    callback = dmScript::CreateCallback(L, 1);
     return 0;
 }
 
@@ -222,7 +193,7 @@ static const luaL_reg Module_methods[] =
     {"init", InitGeneric},
     {"init_hr", InitHR},
     {"close", Close},
-    {"add_listener", AddListener},
+    {"set_callback", SetCallback},
     {"test", Test},
     {0, 0}
 };
@@ -236,6 +207,12 @@ static void LuaInit(lua_State* L)
 
     lua_pop(L, 1);
     assert(top == lua_gettop(L));
+}
+
+static dmExtension::Result UpdateANT(dmExtension::Params* params)
+{
+    UpdateCallback();
+    return dmExtension::RESULT_OK;
 }
 
 static dmExtension::Result AppInitializeMyExtension(dmExtension::AppParams* params)
@@ -292,4 +269,4 @@ static void OnEventMyExtension(dmExtension::Params* params, const dmExtension::E
 
 // MyExtension is the C++ symbol that holds all relevant extension data.
 // It must match the name field in the `ext.manifest`
-DM_DECLARE_EXTENSION(ant, LIB_NAME, AppInitializeMyExtension, AppFinalizeMyExtension, InitializeMyExtension, 0, OnEventMyExtension, FinalizeMyExtension)
+DM_DECLARE_EXTENSION(ant, LIB_NAME, AppInitializeMyExtension, AppFinalizeMyExtension, InitializeMyExtension, UpdateANT, OnEventMyExtension, FinalizeMyExtension)

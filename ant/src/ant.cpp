@@ -104,7 +104,7 @@ BOOL ANTController::Init(UCHAR usbNumber, UCHAR channelType, USHORT deviceType, 
     // to another program
     if(!bStatus)
     {
-        LogMessage("Failed to connect to device at USB port %d\n", usbNumber);
+        LogMessage("Failed to connect to device at USB port %d", usbNumber);
         return FALSE;
     }
 
@@ -112,7 +112,7 @@ BOOL ANTController::Init(UCHAR usbNumber, UCHAR channelType, USHORT deviceType, 
     uiDSIThread = DSIThread_CreateThread(&ANTController::RunMessageThread, this);
     assert(uiDSIThread);
 
-    LogMessage("Initialization was successful!\n"); fflush(stdout);
+    LogMessage("Initialization was successful!"); fflush(stdout);
 
     return this->InitANT();
 }
@@ -145,7 +145,7 @@ void ANTController::LogMessage(const char *format, ...)
     vsprintf (message, format, args);
     va_end(args);
 
-    printf("%s", message);
+    printf("%s\n", message);
     funcMessageCallback(message, NULL);
 }
 
@@ -160,12 +160,12 @@ BOOL ANTController::InitANT(void)
    BOOL bStatus;
 
    // Reset system
-   LogMessage("Resetting module...\n");
+   LogMessage("Resetting module...");
    bStatus = pclMessageObject->ResetSystem();
    DSIThread_Sleep(1000);
 
    // Start the test by setting network key
-   LogMessage("Setting network key...\n");
+   LogMessage("Setting network key...");
    UCHAR ucNetKey[8] = USER_NETWORK_KEY;
 
    bStatus = pclMessageObject->SetNetworkKey(USER_NETWORK_NUM, ucNetKey, MESSAGE_TIMEOUT);
@@ -255,11 +255,11 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error configuring network key: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error configuring network key: Code 0%d", stMessage.aucData[2]);
                   break;
                }
-               LogMessage("Network key set.\n");
-               LogMessage("Assigning channel...\n");
+               LogMessage("Network key set.");
+               LogMessage("Assigning channel...");
                if(ucChannelType == CHANNEL_TYPE_MASTER)
                {
                   bStatus = pclMessageObject->AssignChannel(USER_ANTCHANNEL, PARAMETER_TX_NOT_RX, 0, MESSAGE_TIMEOUT);
@@ -275,11 +275,11 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error assigning channel: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error assigning channel: Code 0%d", stMessage.aucData[2]);
                   break;
                }
-               LogMessage("Channel assigned\n");
-               LogMessage("Setting Channel ID... Ch:%d Device:%d Devtype:%d Transtype:%d \n", USER_ANTCHANNEL, USER_DEVICENUM, usDeviceType, usTransType);
+               LogMessage("Channel assigned");
+               LogMessage("Setting Channel ID... Ch:%d Device:%d Devtype:%d Transtype:%d ", USER_ANTCHANNEL, USER_DEVICENUM, usDeviceType, usTransType);
                bStatus = pclMessageObject->SetChannelID(USER_ANTCHANNEL, USER_DEVICENUM, usDeviceType, usTransType, MESSAGE_TIMEOUT);
                break;
             }
@@ -288,11 +288,11 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error configuring Channel ID: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error configuring Channel ID: Code 0%d", stMessage.aucData[2]);
                   break;
                }
-               LogMessage("Channel ID set \n");
-               LogMessage("Setting Radio Frequency...\n");
+               LogMessage("Channel ID set ");
+               LogMessage("Setting Radio Frequency...");
                bStatus = pclMessageObject->SetChannelRFFrequency(USER_ANTCHANNEL, usRadioFreq, MESSAGE_TIMEOUT);
                break;
             }
@@ -301,13 +301,13 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error configuring Radio Frequency: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error configuring Radio Frequency: Code 0%d", stMessage.aucData[2]);
                   break;
                }
-               LogMessage("Radio Frequency set\n");
+               LogMessage("Radio Frequency set");
 
 
-               LogMessage("Setting Message Period...\n");
+               LogMessage("Setting Message Period...");
                bStatus = pclMessageObject->SetChannelPeriod(USER_ANTCHANNEL, (USHORT)8070, MESSAGE_TIMEOUT);
                
                break;
@@ -317,11 +317,11 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                 if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                 {
-                    printf("Error assigning Message Period: Code 0%d\n", stMessage.aucData[2]);
+                    printf("Error assigning Message Period: Code 0%d", stMessage.aucData[2]);
                     break;
                 }
-                LogMessage("Message period assigned\n");
-                LogMessage("Opening channel...\n");
+                LogMessage("Message period assigned");
+                LogMessage("Opening channel...");
                 bBroadcasting = TRUE;
                 bStatus = pclMessageObject->OpenChannel(USER_ANTCHANNEL, MESSAGE_TIMEOUT);
                 break;
@@ -331,13 +331,13 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error opening channel: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error opening channel: Code 0%d", stMessage.aucData[2]);
                   bBroadcasting = FALSE;
                   break;
                }
-               LogMessage("Chanel opened\n");
+               LogMessage("Chanel opened");
 #if defined (ENABLE_EXTENDED_MESSAGES)
-               LogMessage("Enabling extended messages...\n");
+               LogMessage("Enabling extended messages...");
                pclMessageObject->RxExtMesgsEnable(TRUE);
 #endif
                break;
@@ -347,15 +347,15 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] == INVALID_MESSAGE)
                {
-                  LogMessage("Extended messages not supported in this ANT product\n");
+                  LogMessage("Extended messages not supported in this ANT product");
                   break;
                }
                else if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error enabling extended messages: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error enabling extended messages: Code 0%d", stMessage.aucData[2]);
                   break;
                }
-               LogMessage("Extended messages enabled\n");
+               LogMessage("Extended messages enabled");
                break;
             }
 
@@ -363,10 +363,10 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error unassigning channel: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error unassigning channel: Code 0%d", stMessage.aucData[2]);
                   break;
                }
-               LogMessage("Channel unassigned\n");
+               LogMessage("Channel unassigned");
                bMyDone = TRUE;
                break;
             }
@@ -376,14 +376,14 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                if(stMessage.aucData[2] == CHANNEL_IN_WRONG_STATE)
                {
                   // We get here if we tried to close the channel after the search timeout (slave)
-                  LogMessage("Channel is already closed\n");
-                  LogMessage("Unassigning channel...\n");
+                  LogMessage("Channel is already closed");
+                  LogMessage("Unassigning channel...");
                   bStatus = pclMessageObject->UnAssignChannel(USER_ANTCHANNEL, MESSAGE_TIMEOUT);
                   break;
                }
                else if(stMessage.aucData[2] != RESPONSE_NO_ERROR)
                {
-                  LogMessage("Error closing channel: Code 0%d\n", stMessage.aucData[2]);
+                  LogMessage("Error closing channel: Code 0%d", stMessage.aucData[2]);
                   break;
                }
                // If this message was successful, wait for EVENT_CHANNEL_CLOSED to confirm channel is closed
@@ -394,7 +394,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
             {
                if(stMessage.aucData[2] == INVALID_MESSAGE)
                {
-                  LogMessage("Requested message not supported in this ANT product\n");
+                  LogMessage("Requested message not supported in this ANT product");
                }
                break;
             }
@@ -405,8 +405,8 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                   {
                   case EVENT_CHANNEL_CLOSED:
                   {
-                     LogMessage("Channel Closed\n");
-                     LogMessage("Unassigning channel...\n");
+                     LogMessage("Channel Closed");
+                     LogMessage("Unassigning channel...");
                      bStatus = pclMessageObject->UnAssignChannel(USER_ANTCHANNEL, MESSAGE_TIMEOUT);
                      break;
                   }
@@ -428,7 +428,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                         // Echo what the data will be over the air on the next message period.
                         if(bDisplay)
                         {
-                           LogMessage("Tx:(%d): [%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x]\n",
+                           LogMessage("Tx:(%d): [%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x]",
                               USER_ANTCHANNEL,
                               aucTransmitBuffer[MESSAGE_BUFFER_DATA1_INDEX],
                               aucTransmitBuffer[MESSAGE_BUFFER_DATA2_INDEX],
@@ -452,47 +452,47 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                   }
                   case EVENT_RX_SEARCH_TIMEOUT:
                   {
-                     LogMessage("Search Timeout\n");
+                     LogMessage("Search Timeout");
                      break;
                   }
                   case EVENT_RX_FAIL:
                   {
-                     LogMessage("Rx Fail\n");
+                     LogMessage("Rx Fail");
                      break;
                   }
                   case EVENT_TRANSFER_RX_FAILED:
                   {
-                     LogMessage("Burst receive has failed\n");
+                     LogMessage("Burst receive has failed");
                      break;
                   }
                   case EVENT_TRANSFER_TX_COMPLETED:
                   {
-                     LogMessage("Tranfer Completed\n");
+                     LogMessage("Tranfer Completed");
                      break;
                   }
                   case EVENT_TRANSFER_TX_FAILED:
                   {
-                     LogMessage("Tranfer Failed\n");
+                     LogMessage("Tranfer Failed");
                      break;
                   }
                   case EVENT_RX_FAIL_GO_TO_SEARCH:
                   {
-                     LogMessage("Go to Search\n");
+                     LogMessage("Go to Search");
                      break;
                   }
                   case EVENT_CHANNEL_COLLISION:
                   {
-                     LogMessage("Channel Collision\n");
+                     LogMessage("Channel Collision");
                      break;
                   }
                   case EVENT_TRANSFER_TX_START:
                   {
-                     LogMessage("Burst Started\n");
+                     LogMessage("Burst Started");
                      break;
                   }
                   default:
                   {
-                     LogMessage("Unhandled channel event: 0x%X\n", stMessage.aucData[2]);
+                     LogMessage("Unhandled channel event: 0x%X", stMessage.aucData[2]);
                      break;
                   }
 
@@ -503,7 +503,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
 
             default:
             {
-               LogMessage("Unhandled response 0%d to message 0x%X\n", stMessage.aucData[2], stMessage.aucData[1]);
+               LogMessage("Unhandled response 0%d to message 0x%X", stMessage.aucData[2], stMessage.aucData[1]);
                break;
             }
          }
@@ -535,71 +535,71 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
 
       case MESG_CAPABILITIES_ID:
       {
-         LogMessage("CAPABILITIES:\n");
-         LogMessage("   Max ANT Channels: %d\n",stMessage.aucData[MESSAGE_BUFFER_DATA1_INDEX]);
-         LogMessage("   Max ANT Networks: %d\n",stMessage.aucData[MESSAGE_BUFFER_DATA2_INDEX]);
+         LogMessage("CAPABILITIES:");
+         LogMessage("   Max ANT Channels: %d",stMessage.aucData[MESSAGE_BUFFER_DATA1_INDEX]);
+         LogMessage("   Max ANT Networks: %d",stMessage.aucData[MESSAGE_BUFFER_DATA2_INDEX]);
 
          UCHAR ucStandardOptions = stMessage.aucData[MESSAGE_BUFFER_DATA3_INDEX];
          UCHAR ucAdvanced = stMessage.aucData[MESSAGE_BUFFER_DATA4_INDEX];
          UCHAR ucAdvanced2 = stMessage.aucData[MESSAGE_BUFFER_DATA5_INDEX];
 
-         LogMessage("Standard Options:\n");
+         LogMessage("Standard Options:");
          if( ucStandardOptions & CAPABILITIES_NO_RX_CHANNELS )
-            LogMessage("CAPABILITIES_NO_RX_CHANNELS\n");
+            LogMessage("CAPABILITIES_NO_RX_CHANNELS");
          if( ucStandardOptions & CAPABILITIES_NO_TX_CHANNELS )
-            LogMessage("CAPABILITIES_NO_TX_CHANNELS\n");
+            LogMessage("CAPABILITIES_NO_TX_CHANNELS");
          if( ucStandardOptions & CAPABILITIES_NO_RX_MESSAGES )
-            LogMessage("CAPABILITIES_NO_RX_MESSAGES\n");
+            LogMessage("CAPABILITIES_NO_RX_MESSAGES");
          if( ucStandardOptions & CAPABILITIES_NO_TX_MESSAGES )
-            LogMessage("CAPABILITIES_NO_TX_MESSAGES\n");
+            LogMessage("CAPABILITIES_NO_TX_MESSAGES");
          if( ucStandardOptions & CAPABILITIES_NO_ACKD_MESSAGES )
-            LogMessage("CAPABILITIES_NO_ACKD_MESSAGES\n");
+            LogMessage("CAPABILITIES_NO_ACKD_MESSAGES");
          if( ucStandardOptions & CAPABILITIES_NO_BURST_TRANSFER )
-            LogMessage("CAPABILITIES_NO_BURST_TRANSFER\n");
+            LogMessage("CAPABILITIES_NO_BURST_TRANSFER");
 
-         LogMessage("Advanced Options:\n");
+         LogMessage("Advanced Options:");
          if( ucAdvanced & CAPABILITIES_OVERUN_UNDERRUN )
-            LogMessage("CAPABILITIES_OVERUN_UNDERRUN\n");
+            LogMessage("CAPABILITIES_OVERUN_UNDERRUN");
          if( ucAdvanced & CAPABILITIES_NETWORK_ENABLED )
-            LogMessage("CAPABILITIES_NETWORK_ENABLED\n");
+            LogMessage("CAPABILITIES_NETWORK_ENABLED");
          if( ucAdvanced & CAPABILITIES_AP1_VERSION_2 )
-            LogMessage("CAPABILITIES_AP1_VERSION_2\n");
+            LogMessage("CAPABILITIES_AP1_VERSION_2");
          if( ucAdvanced & CAPABILITIES_SERIAL_NUMBER_ENABLED )
-            LogMessage("CAPABILITIES_SERIAL_NUMBER_ENABLED\n");
+            LogMessage("CAPABILITIES_SERIAL_NUMBER_ENABLED");
          if( ucAdvanced & CAPABILITIES_PER_CHANNEL_TX_POWER_ENABLED )
-            LogMessage("CAPABILITIES_PER_CHANNEL_TX_POWER_ENABLED\n");
+            LogMessage("CAPABILITIES_PER_CHANNEL_TX_POWER_ENABLED");
          if( ucAdvanced & CAPABILITIES_LOW_PRIORITY_SEARCH_ENABLED )
-            LogMessage("CAPABILITIES_LOW_PRIORITY_SEARCH_ENABLED\n");
+            LogMessage("CAPABILITIES_LOW_PRIORITY_SEARCH_ENABLED");
          if( ucAdvanced & CAPABILITIES_SCRIPT_ENABLED )
-            LogMessage("CAPABILITIES_SCRIPT_ENABLED\n");
+            LogMessage("CAPABILITIES_SCRIPT_ENABLED");
          if( ucAdvanced & CAPABILITIES_SEARCH_LIST_ENABLED )
-            LogMessage("CAPABILITIES_SEARCH_LIST_ENABLED\n");
+            LogMessage("CAPABILITIES_SEARCH_LIST_ENABLED");
 
          if(usSize_ > 4)
          {
-            LogMessage("Advanced 2 Options 1:\n");
+            LogMessage("Advanced 2 Options 1:");
             if( ucAdvanced2 & CAPABILITIES_LED_ENABLED )
-               LogMessage("CAPABILITIES_LED_ENABLED\n");
+               LogMessage("CAPABILITIES_LED_ENABLED");
             if( ucAdvanced2 & CAPABILITIES_EXT_MESSAGE_ENABLED )
-               LogMessage("CAPABILITIES_EXT_MESSAGE_ENABLED\n");
+               LogMessage("CAPABILITIES_EXT_MESSAGE_ENABLED");
             if( ucAdvanced2 & CAPABILITIES_SCAN_MODE_ENABLED )
-               LogMessage("CAPABILITIES_SCAN_MODE_ENABLED\n");
+               LogMessage("CAPABILITIES_SCAN_MODE_ENABLED");
             if( ucAdvanced2 & CAPABILITIES_RESERVED )
-               LogMessage("CAPABILITIES_RESERVED\n");
+               LogMessage("CAPABILITIES_RESERVED");
             if( ucAdvanced2 & CAPABILITIES_PROX_SEARCH_ENABLED )
-               LogMessage("CAPABILITIES_PROX_SEARCH_ENABLED\n");
+               LogMessage("CAPABILITIES_PROX_SEARCH_ENABLED");
             if( ucAdvanced2 & CAPABILITIES_EXT_ASSIGN_ENABLED )
-               LogMessage("CAPABILITIES_EXT_ASSIGN_ENABLED\n");
+               LogMessage("CAPABILITIES_EXT_ASSIGN_ENABLED");
             if( ucAdvanced2 & CAPABILITIES_FS_ANTFS_ENABLED)
-               LogMessage("CAPABILITIES_FREE_1\n");
+               LogMessage("CAPABILITIES_FREE_1");
             if( ucAdvanced2 & CAPABILITIES_FIT1_ENABLED )
-               LogMessage("CAPABILITIES_FIT1_ENABLED\n");
+               LogMessage("CAPABILITIES_FIT1_ENABLED");
          }
          break;
       }
       case MESG_CHANNEL_STATUS_ID:
       {
-         LogMessage("Got Status\n");
+         LogMessage("Got Status");
 
          char astrStatus[][32] = {  "STATUS_UNASSIGNED_CHANNEL",
                                     "STATUS_ASSIGNED_CHANNEL",
@@ -607,7 +607,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
                                     "STATUS_TRACKING_CHANNEL"   };
 
          UCHAR ucStatusByte = stMessage.aucData[MESSAGE_BUFFER_DATA2_INDEX] & STATUS_CHANNEL_STATE_MASK; // MUST MASK OFF THE RESERVED BITS
-         LogMessage("STATUS: %s\n",astrStatus[ucStatusByte]);
+         LogMessage("STATUS: %s",astrStatus[ucStatusByte]);
          break;
       }
       case MESG_CHANNEL_ID_ID:
@@ -617,12 +617,12 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
          UCHAR ucDeviceType =  stMessage.aucData[MESSAGE_BUFFER_DATA4_INDEX];
          UCHAR ucTransmissionType = stMessage.aucData[MESSAGE_BUFFER_DATA5_INDEX];
 
-         LogMessage("CHANNEL ID: (%d/%d/%d)\n", usDeviceNumber, ucDeviceType, ucTransmissionType);
+         LogMessage("CHANNEL ID: (%d/%d/%d)", usDeviceNumber, ucDeviceType, ucTransmissionType);
          break;
       }
       case MESG_VERSION_ID:
       {
-         LogMessage("VERSION: %s\n", (char*) &stMessage.aucData[MESSAGE_BUFFER_DATA1_INDEX]);
+         LogMessage("VERSION: %s", (char*) &stMessage.aucData[MESSAGE_BUFFER_DATA1_INDEX]);
          break;
       }
       case MESG_ACKNOWLEDGED_DATA_ID:
@@ -715,7 +715,7 @@ void ANTController::ProcessMessage(ANT_MESSAGE stMessage, USHORT usSize_)
    {
       if(bDisplay)
       {
-         LogMessage("[%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x]\n",
+         LogMessage("[%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x],[%02x]",
             stMessage.aucData[ucDataOffset + 0],
             stMessage.aucData[ucDataOffset + 1],
             stMessage.aucData[ucDataOffset + 2],

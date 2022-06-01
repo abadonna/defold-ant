@@ -1,6 +1,6 @@
 local function get_message(self, message)
 	if not message.device_type then
-		self.log = self.log .. message.text
+		self.log = self.log .. message.text  .. "\n"
 		gui.set_text(gui.get_node("log"), self.log)
 	end
 	
@@ -11,8 +11,9 @@ end
 
 function init(self)
 	self.log = ""
-	ant.add_listener(get_message)
+	ant.set_callback(get_message)
 	ant.init_hr(0)
+	--ant.test()
 end
 
 function final(self)
