@@ -134,7 +134,8 @@ void ANTController::Close()
 
     //Close all stuff
     if(pclSerialObject)
-      pclSerialObject->Close();
+        pclSerialObject->Close();
+
 }
 
 void ANTController::LogMessage(const char *format, ...)

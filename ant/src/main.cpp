@@ -15,9 +15,15 @@ struct CallbackData
 
 static dmMutex::HMutex mutex;
 static dmArray<CallbackData> callbacksQueue;
+std::unordered_map<char*, float> recieved;
 
 ANTController* controller;
 dmScript::LuaCallbackInfo* callback;
+
+static int GetHeartRate(lua_State* L) {
+    lua_pushnumber(L, recieved["hr"]);
+    return 1;
+}
 
 static void InvokeMessageCallback(const char* message, std::unordered_map<char*, float> *data) {
 
@@ -95,6 +101,10 @@ void UpdateCallback()
         CallbackData* cb = &tmp[i];
         InvokeMessageCallback(cb->message, cb->data);
         if (cb->data) {
+            for (auto it = cb->data->begin(); it != cb->data->end(); ++it) {
+                recieved[it->first] = it->second;
+            }
+            
             delete cb->data;
         }
     }
@@ -104,7 +114,7 @@ void UpdateCallback()
 static int Test(lua_State* L)  {
     mutex = dmMutex::New();
     std::unordered_map<char*, float> data;
-    data["device_type"] = 1;
+    data["hr"] = 1;
     AddToQueueCallback("XXXX", &data);
     AddToQueueCallback("yyy", NULL);
     return 0;
@@ -194,6 +204,7 @@ static const luaL_reg Module_methods[] =
     {"init_hr", InitHR},
     {"close", Close},
     {"set_callback", SetCallback},
+    {"get_heart_rate", GetHeartRate},
     {"test", Test},
     {0, 0}
 };
