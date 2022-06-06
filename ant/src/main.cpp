@@ -15,10 +15,10 @@ struct CallbackData
 
 static dmMutex::HMutex mutex;
 static dmArray<CallbackData> callbacksQueue;
-std::unordered_map<char*, float> recieved;
+static std::unordered_map<char*, float> recieved;
 
-ANTController* controller;
-dmScript::LuaCallbackInfo* callback;
+static  ANTController* controller;
+static  dmScript::LuaCallbackInfo* callback;
 
 static int GetHeartRate(lua_State* L) {
     lua_pushnumber(L, recieved["hr"]);
@@ -112,7 +112,6 @@ void UpdateCallback()
 }
 
 static int Test(lua_State* L)  {
-    mutex = dmMutex::New();
     std::unordered_map<char*, float> data;
     data["hr"] = 1;
     AddToQueueCallback("XXXX", &data);
@@ -122,7 +121,6 @@ static int Test(lua_State* L)  {
 
 static bool Init(UCHAR usbNumber, UCHAR channelType = 0, USHORT deviceType = 0, USHORT transType = 0, USHORT radioFreq  = 66, USHORT period = 8192, DATA_PROCESS_CALLBACK callback = NULL)
 {
-    mutex = dmMutex::New();
     controller = new ANTController(AddToQueueCallback);
     if(controller->Init(usbNumber, channelType, deviceType, transType, radioFreq, period, callback))
     {
@@ -180,7 +178,8 @@ static int Close(lua_State* L)
     }
 
     if (callback) {
-        dmScript::DestroyCallback(callback); 
+        dmScript::DestroyCallback(callback);
+        callback = NULL;
     }
 
     return 0;
@@ -236,6 +235,7 @@ static dmExtension::Result InitializeMyExtension(dmExtension::Params* params)
 {
     // Init Lua
     LuaInit(params->m_L);
+    mutex = dmMutex::New();
     dmLogInfo("Registered %s Extension", MODULE_NAME);
     return dmExtension::RESULT_OK;
 }
@@ -248,6 +248,9 @@ static dmExtension::Result AppFinalizeMyExtension(dmExtension::AppParams* params
 
 static dmExtension::Result FinalizeMyExtension(dmExtension::Params* params)
 {
+    Close(params->m_L);
+    dmMutex::Delete(mutex);
+    
     dmLogInfo("FinalizeMyExtension");
     return dmExtension::RESULT_OK;
 }
